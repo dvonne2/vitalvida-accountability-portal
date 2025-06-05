@@ -1,9 +1,27 @@
+
 import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
 import { cn } from "@/lib/utils"
 
-const TooltipProvider = TooltipPrimitive.Provider
+const TooltipProvider = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Provider>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Provider>
+>(({ children, ...props }, ref) => {
+  // Add defensive check to ensure React is properly loaded
+  if (!React || typeof React.useState !== 'function') {
+    console.error('React is not properly initialized');
+    return <div>{children}</div>;
+  }
+  
+  return (
+    <TooltipPrimitive.Provider ref={ref} {...props}>
+      {children}
+    </TooltipPrimitive.Provider>
+  );
+});
+
+TooltipProvider.displayName = "TooltipProvider";
 
 const Tooltip = TooltipPrimitive.Root
 
