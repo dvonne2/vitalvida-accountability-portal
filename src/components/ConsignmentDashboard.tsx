@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import LiveOrderFeed from './LiveOrderFeed';
 import KPIScorecard from './KPIScorecard';
 import EnhancedMetrics from './EnhancedMetrics';
 import EnhancedActivityFeed from './EnhancedActivityFeed';
+import BirdEyePanel from './BirdEyePanel';
 
 interface ConsignmentDashboardProps {
   userRole: string;
@@ -74,9 +76,10 @@ const ConsignmentDashboard = ({ userRole, username }: ConsignmentDashboardProps)
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="consignments">Consignments</TabsTrigger>
+            <TabsTrigger value="birdeye">Bird Eye Panel</TabsTrigger>
             <TabsTrigger value="activity">Live Activity</TabsTrigger>
             <TabsTrigger value="alerts">Fraud Alerts</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -149,6 +152,10 @@ const ConsignmentDashboard = ({ userRole, username }: ConsignmentDashboardProps)
             )}
 
             <ConsignmentTable userRole={userRole} />
+          </TabsContent>
+
+          <TabsContent value="birdeye">
+            <BirdEyePanel userRole={userRole} />
           </TabsContent>
 
           <TabsContent value="activity">
