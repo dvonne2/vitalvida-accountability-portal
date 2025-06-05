@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, AlertTriangle, CheckCircle, Clock, Phone } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Eye, AlertTriangle, CheckCircle, Clock, Phone, DollarSign } from 'lucide-react';
 import OrderTrackingModal from './OrderTrackingModal';
 
 interface Order {
@@ -19,7 +20,12 @@ interface Order {
   address: string;
   state: string;
   assignedDA: string;
+  daName?: string;
+  daPhone?: string;
   warnings: string[];
+  deliveryCost?: number;
+  additionalCost?: number;
+  additionalCostDescription?: string;
 }
 
 const LiveOrderFeed = () => {
@@ -29,7 +35,7 @@ const LiveOrderFeed = () => {
   const [deliveredCount, setDeliveredCount] = useState(0);
 
   useEffect(() => {
-    // Mock real-time order data with new structure
+    // Mock real-time order data with enhanced structure
     const mockOrders: Order[] = [
       {
         id: '10057',
@@ -43,7 +49,12 @@ const LiveOrderFeed = () => {
         address: '15 Admiralty Way, Lekki Phase 1',
         state: 'Lagos',
         assignedDA: 'DA_LAG_001',
-        warnings: []
+        daName: 'Abdul Yusuf',
+        daPhone: '+2348012345678',
+        warnings: [],
+        deliveryCost: 2500,
+        additionalCost: 200,
+        additionalCostDescription: 'Security gate fee'
       },
       {
         id: '10056',
@@ -57,7 +68,10 @@ const LiveOrderFeed = () => {
         address: '42 Herbert Macaulay Street, Yaba',
         state: 'Lagos',
         assignedDA: 'DA_LAG_003',
-        warnings: []
+        daName: 'Kemi Adebayo',
+        daPhone: '+2348023456789',
+        warnings: [],
+        deliveryCost: 2200
       },
       {
         id: '10052',
@@ -71,6 +85,8 @@ const LiveOrderFeed = () => {
         address: '8 Gimbiya Street, Area 11',
         state: 'FCT',
         assignedDA: 'DA_FCT_002',
+        daName: 'Ibrahim Musa',
+        daPhone: '+2348034567890',
         warnings: ['No Call Made Yet']
       },
       {
@@ -85,7 +101,12 @@ const LiveOrderFeed = () => {
         address: '23 Awolowo Road, Ikoyi',
         state: 'Lagos',
         assignedDA: 'DA_LAG_005',
-        warnings: ['No Payment Detected']
+        daName: 'Emeka Okafor',
+        daPhone: '+2348045678901',
+        warnings: ['No Payment Detected'],
+        deliveryCost: 3200,
+        additionalCost: 500,
+        additionalCostDescription: 'Multiple delivery attempts'
       }
     ];
 
@@ -101,12 +122,17 @@ const LiveOrderFeed = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const getRowColor = (status: string) => {
+  const getRowColor = (status: string, deliveryCost?: number) => {
+    // High delivery cost takes priority
+    if (deliveryCost && deliveryCost > 2500) {
+      return 'bg-yellow-50 border-l-4 border-l-yellow-500';
+    }
+    
     switch (status) {
       case 'delivered':
         return 'bg-green-50 border-l-4 border-l-green-500';
       case 'in_progress':
-        return 'bg-yellow-50 border-l-4 border-l-yellow-500';
+        return 'bg-blue-50 border-l-4 border-l-blue-500';
       case 'breach':
       case 'pending':
         return 'bg-red-50 border-l-4 border-l-red-500';
@@ -129,8 +155,28 @@ const LiveOrderFeed = () => {
     );
   };
 
+  const formatCurrency = (amount?: number) => {
+    if (!amount) return '—';
+    return `₦${amount.toLocaleString()}`;
+  };
+
+  const handleDeliveryCostUpdate = (orderId: string, costData: { deliveryCost: number; additionalCost?: number; additionalCostDescription?: string }) => {
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId 
+          ? { 
+              ...order, 
+              deliveryCost: costData.deliveryCost,
+              additionalCost: costData.additionalCost,
+              additionalCostDescription: costData.additionalCostDescription
+            }
+          : order
+      )
+    );
+  };
+
   return (
-    <>
+    <TooltipProvider>
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -156,6 +202,8 @@ const LiveOrderFeed = () => {
                 <TableHead>Product</TableHead>
                 <TableHead>DA Called Customer</TableHead>
                 <TableHead>Out for Delivery</TableHead>
+                <TableHead>Delivery Cost (₦)</TableHead>
+                <TableHead>Additional Cost (₦)</TableHead>
                 <TableHead>Payment Received</TableHead>
                 <TableHead>Delivered</TableHead>
                 <TableHead>Warnings</TableHead>
@@ -164,7 +212,7 @@ const LiveOrderFeed = () => {
             </TableHeader>
             <TableBody>
               {orders.map((order) => (
-                <TableRow key={order.id} className={getRowColor(order.status)}>
+                <TableRow key={order.id} className={getRowColor(order.status, order.deliveryCost)}>
                   <TableCell className="font-medium">{order.id}</TableCell>
                   <TableCell>{order.customer}</TableCell>
                   <TableCell>{order.product}</TableCell>
@@ -181,6 +229,39 @@ const LiveOrderFeed = () => {
                   <TableCell>
                     {order.outForDelivery ? (
                       <span className="text-blue-600">{order.outForDelivery}</span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <span className={order.deliveryCost && order.deliveryCost > 2500 ? 'text-yellow-700 font-semibold' : ''}>
+                        {formatCurrency(order.deliveryCost)}
+                      </span>
+                      {order.deliveryCost && order.deliveryCost > 2500 && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <AlertTriangle className="w-4 h-4 ml-1 text-yellow-600" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delivery Cost Exceeds Limit – Review Suggested</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {order.additionalCost ? (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <span className="text-blue-600 cursor-help">
+                            {formatCurrency(order.additionalCost)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{order.additionalCostDescription || 'Additional cost'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
                       <span className="text-gray-400">—</span>
                     )}
@@ -234,9 +315,10 @@ const LiveOrderFeed = () => {
           order={selectedOrder}
           isOpen={!!selectedOrder}
           onClose={() => setSelectedOrder(null)}
+          onDeliveryCostUpdate={handleDeliveryCostUpdate}
         />
       )}
-    </>
+    </TooltipProvider>
   );
 };
 

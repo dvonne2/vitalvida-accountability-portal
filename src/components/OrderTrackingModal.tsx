@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Upload, Phone, Truck, CreditCard, CheckCircle, AlertTriangle, Clock, User, FileText, DollarSign, Save } from 'lucide-react';
+import { Upload, Phone, Truck, CreditCard, CheckCircle, AlertTriangle, Clock, User, FileText, DollarSign, Save, MessageCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import ProofUploadModal from './ProofUploadModal';
 
@@ -23,13 +24,19 @@ interface Order {
   address: string;
   state: string;
   assignedDA: string;
+  daName?: string;
+  daPhone?: string;
   warnings: string[];
+  deliveryCost?: number;
+  additionalCost?: number;
+  additionalCostDescription?: string;
 }
 
 interface OrderTrackingModalProps {
   order: Order;
   isOpen: boolean;
   onClose: () => void;
+  onDeliveryCostUpdate?: (orderId: string, costData: { deliveryCost: number; additionalCost?: number; additionalCostDescription?: string }) => void;
 }
 
 interface TimelineEvent {
@@ -37,7 +44,7 @@ interface TimelineEvent {
   timestamp: string;
   actor: string;
   icon: React.ReactNode;
-  proofLink?: string;
+  proofStatus: 'uploaded' | 'missing' | 'pending';
   completed: boolean;
 }
 
@@ -48,15 +55,16 @@ interface DeliveryCostData {
   comments: string;
 }
 
-const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps) => {
+const OrderTrackingModal = ({ order, isOpen, onClose, onDeliveryCostUpdate }: OrderTrackingModalProps) => {
   const [proofUploadType, setProofUploadType] = useState<string | null>(null);
   const [deliveryCostData, setDeliveryCostData] = useState<DeliveryCostData>({
-    deliveryCost: '',
-    additionalCostAmount: '',
-    additionalCostDescription: '',
+    deliveryCost: order.deliveryCost?.toString() || '',
+    additionalCostAmount: order.additionalCost?.toString() || '',
+    additionalCostDescription: order.additionalCostDescription || '',
     comments: ''
   });
   const [isSavingCosts, setIsSavingCosts] = useState(false);
+  const [costsLocked, setCostsLocked] = useState(!!order.deliveryCost);
   const { toast } = useToast();
 
   const timelineEvents: TimelineEvent[] = [
@@ -65,6 +73,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
       timestamp: order.daCalled,
       actor: 'DA',
       icon: <Phone className="w-4 h-4" />,
+      proofStatus: order.daCalled ? 'uploaded' : 'missing',
       completed: !!order.daCalled
     },
     {
@@ -72,6 +81,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
       timestamp: order.outForDelivery,
       actor: 'DA',
       icon: <Truck className="w-4 h-4" />,
+      proofStatus: order.outForDelivery ? 'uploaded' : 'missing',
       completed: !!order.outForDelivery
     },
     {
@@ -79,6 +89,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
       timestamp: order.paymentReceived,
       actor: 'Accountant',
       icon: <CreditCard className="w-4 h-4" />,
+      proofStatus: order.paymentReceived ? 'uploaded' : 'missing',
       completed: !!order.paymentReceived
     },
     {
@@ -86,15 +97,16 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
       timestamp: order.delivered,
       actor: 'DA',
       icon: <CheckCircle className="w-4 h-4" />,
+      proofStatus: order.delivered ? 'uploaded' : 'missing',
       completed: !!order.delivered
     }
   ];
 
   const proofUploadTypes = [
-    { type: 'call_screenshot', label: 'Call Screenshot', description: 'Shows DA called customer' },
-    { type: 'waybill_photo', label: 'Waybill Photo', description: 'Confirms goods were shipped' },
-    { type: 'payment_screenshot', label: 'Payment Screenshot', description: 'Confirms customer payment' },
-    { type: 'delivery_confirmation', label: 'Delivery Confirmation', description: 'OTP entry or image proof' }
+    { type: 'call_screenshot', label: 'Call Screenshot', description: 'Verifies DA contacted customer' },
+    { type: 'waybill_photo', label: 'Waybill Photo', description: 'Confirms package was dispatched' },
+    { type: 'payment_screenshot', label: 'Payment Screenshot', description: 'Verifies customer paid' },
+    { type: 'delivery_confirmation', label: 'Delivery Confirmation', description: 'OTP or signed proof image' }
   ];
 
   const getWarningFlags = () => {
@@ -190,6 +202,15 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
 
       console.log('Saving delivery cost data:', costData);
 
+      // Update the main table via callback
+      if (onDeliveryCostUpdate) {
+        onDeliveryCostUpdate(order.id, {
+          deliveryCost: costData.deliveryCost,
+          additionalCost: costData.additionalCost || undefined,
+          additionalCostDescription: costData.additionalCostDescription || undefined
+        });
+      }
+
       // Check if delivery cost exceeds threshold (₦2,500)
       const deliveryCostThreshold = 2500;
       const exceedsThreshold = costData.deliveryCost > deliveryCostThreshold;
@@ -202,13 +223,8 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
         variant: exceedsThreshold ? "destructive" : "default",
       });
 
-      // Reset form
-      setDeliveryCostData({
-        deliveryCost: '',
-        additionalCostAmount: '',
-        additionalCostDescription: '',
-        comments: ''
-      });
+      // Lock the form after successful save
+      setCostsLocked(true);
 
     } catch (error) {
       toast({
@@ -221,10 +237,22 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
     }
   };
 
+  const handleContactDA = () => {
+    if (order.daPhone) {
+      window.open(`https://wa.me/${order.daPhone.replace('+', '')}`, '_blank');
+    }
+  };
+
+  const handleCallDA = () => {
+    if (order.daPhone) {
+      window.open(`tel:${order.daPhone}`, '_self');
+    }
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <span>Order Tracking: {order.id}</span>
@@ -267,7 +295,43 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
               </CardContent>
             </Card>
 
-            {/* 2. TIMELINE OF EVENTS */}
+            {/* 2. ASSIGNED DELIVERY AGENT */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <User className="w-5 h-5 mr-2" />
+                  Assigned Delivery Agent
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">DA Code</label>
+                    <p className="font-semibold">{order.assignedDA}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">DA Name</label>
+                    <p className="font-semibold">{order.daName || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Phone Number</label>
+                    <p className="font-semibold">{order.daPhone || 'Not available'}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" onClick={handleCallDA} disabled={!order.daPhone}>
+                      <Phone className="w-4 h-4 mr-1" />
+                      Call DA
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleContactDA} disabled={!order.daPhone}>
+                      <MessageCircle className="w-4 h-4 mr-1" />
+                      WhatsApp
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3. TIMELINE OF EVENTS */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -299,11 +363,15 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
                             ) : (
                               <span className="text-sm text-gray-400">Pending</span>
                             )}
-                            {event.proofLink && (
-                              <Button variant="link" size="sm" className="p-0 h-auto">
-                                View Proof
-                              </Button>
-                            )}
+                            <div className="mt-1">
+                              <Badge 
+                                variant={event.proofStatus === 'uploaded' ? 'default' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {event.proofStatus === 'uploaded' ? '✅ Proof Uploaded' : 
+                                 event.proofStatus === 'pending' ? '⏳ Pending' : '❌ Missing Proof'}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -313,12 +381,19 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
               </CardContent>
             </Card>
 
-            {/* 3. DELIVERY COST TRACKING - NEW SECTION */}
-            <Card className="border-blue-200 bg-blue-50">
+            {/* 4. DELIVERY COST TRACKING */}
+            <Card className={`border-blue-200 ${costsLocked ? 'bg-gray-50' : 'bg-blue-50'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center text-blue-700">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  Delivery Cost Tracking
+                <CardTitle className="flex items-center justify-between text-blue-700">
+                  <div className="flex items-center">
+                    <DollarSign className="w-5 h-5 mr-2" />
+                    Delivery Cost Tracking
+                  </div>
+                  {costsLocked && (
+                    <Badge variant="outline" className="text-green-700 border-green-300">
+                      ✅ Locked
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -336,6 +411,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
                       className="mt-1"
                       min="0"
                       step="0.01"
+                      disabled={costsLocked}
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Expected: ₦2,500. Amounts above will be flagged.
@@ -355,6 +431,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
                       className="mt-1"
                       min="0"
                       step="0.01"
+                      disabled={costsLocked}
                     />
                   </div>
                 </div>
@@ -370,6 +447,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
                     onChange={(e) => setDeliveryCostData(prev => ({ ...prev, additionalCostDescription: e.target.value }))}
                     placeholder="e.g., Security gate fee, Toll charge, Fuel top-up"
                     className="mt-1"
+                    disabled={costsLocked}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Required if additional amount is entered. Be specific - avoid vague terms.
@@ -387,30 +465,33 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
                     placeholder="e.g., Customer rescheduled, DA went twice, unusual circumstances..."
                     className="mt-1"
                     rows={3}
+                    disabled={costsLocked}
                   />
                 </div>
 
-                <Button 
-                  onClick={handleSaveCosts}
-                  disabled={isSavingCosts}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                  {isSavingCosts ? (
-                    <>
-                      <Save className="w-4 h-4 mr-2 animate-spin" />
-                      Saving Costs...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Delivery Costs
-                    </>
-                  )}
-                </Button>
+                {!costsLocked && (
+                  <Button 
+                    onClick={handleSaveCosts}
+                    disabled={isSavingCosts}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isSavingCosts ? (
+                      <>
+                        <Save className="w-4 h-4 mr-2 animate-spin" />
+                        Saving Costs...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Delivery Costs
+                      </>
+                    )}
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
-            {/* 4. WARNING FLAGS */}
+            {/* 5. WARNING FLAGS */}
             {getWarningFlags().length > 0 && (
               <Card className="border-red-200 bg-red-50">
                 <CardHeader>
@@ -431,7 +512,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
               </Card>
             )}
 
-            {/* 5. UPLOAD PROOF SECTION */}
+            {/* 6. UPLOAD PROOF SECTION */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -457,27 +538,6 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
                       </span>
                     </Button>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 6. ASSIGNED DA INFO */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="w-5 h-5 mr-2" />
-                  Assigned DA
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{order.assignedDA}</p>
-                    <p className="text-sm text-gray-500">Delivery Agent</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Contact DA
-                  </Button>
                 </div>
               </CardContent>
             </Card>
