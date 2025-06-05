@@ -11,11 +11,6 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Add error boundary-like behavior
-  if (!React || typeof React.useState !== 'function') {
-    return <div>Loading...</div>;
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
