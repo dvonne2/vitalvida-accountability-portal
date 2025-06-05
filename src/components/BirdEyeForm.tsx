@@ -1,11 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, Shield, Save, X } from 'lucide-react';
+import { AlertTriangle, Shield, Save, X, RefreshCw } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { BirdEyeEntry, ValidationResult } from '../types/birdEye';
 import SupervisorOverrideModal from './SupervisorOverrideModal';
@@ -18,6 +18,7 @@ interface BirdEyeFormProps {
 const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
+    consignmentNumber: '',
     movementDate: '',
     movementType: '',
     productName: '',
@@ -41,6 +42,19 @@ const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
 
+  // Generate consignment number on component mount
+  useEffect(() => {
+    generateConsignmentNumber();
+  }, []);
+
+  const generateConsignmentNumber = () => {
+    const prefix = 'CNS';
+    const timestamp = Date.now().toString().slice(-8);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const consignmentNumber = `${prefix}${timestamp}${random}`;
+    setFormData(prev => ({ ...prev, consignmentNumber }));
+  };
+
   // Business rules and limits (these would come from admin settings)
   const ADMIN_LIMITS = {
     parkFee: 5000,
@@ -55,7 +69,7 @@ const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
 
     // Required field validation
     const requiredFields = [
-      'movementDate', 'movementType', 'productName', 'productId', 'quantity',
+      'consignmentNumber', 'movementDate', 'movementType', 'productName', 'productId', 'quantity',
       'fromLocation', 'toLocation', 'fromResponsible', 'toResponsible',
       'expectedDeliveryDate', 'status', 'waybillFee', 'parkFee',
       'transportToParkFee', 'storekeeperLoadingFee'
@@ -66,6 +80,11 @@ const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
         errors.push(`${field.replace(/([A-Z])/g, ' $1').toLowerCase()} is required`);
       }
     });
+
+    // Consignment number format validation
+    if (formData.consignmentNumber && !/^CNS\d{11}$/.test(formData.consignmentNumber)) {
+      errors.push('Invalid consignment number format');
+    }
 
     // Business rule validations
     if (formData.quantity && Number(formData.quantity) <= 0) {
@@ -149,6 +168,7 @@ const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
 
     const entry: BirdEyeEntry = {
       id: `BE-${Date.now()}`,
+      consignmentNumber: formData.consignmentNumber,
       movementDate: formData.movementDate,
       movementType: formData.movementType as any,
       productName: formData.productName,
@@ -218,6 +238,30 @@ const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Consignment Number */}
+          <div className="space-y-2">
+            <Label htmlFor="consignmentNumber">Consignment Number *</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="consignmentNumber"
+                value={formData.consignmentNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, consignmentNumber: e.target.value }))}
+                placeholder="Auto-generated"
+                required
+                className="font-mono"
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon"
+                onClick={generateConsignmentNumber}
+                title="Generate new consignment number"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
           {/* Movement Information */}
           <div className="space-y-2">
             <Label htmlFor="movementDate">Movement Date *</Label>
@@ -396,7 +440,11 @@ const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
               onChange={(e) => setFormData(prev => ({ ...prev, parkFee: e.target.value }))}
               placeholder="Enter park fee"
               required
+              className={Number(formData.parkFee) > ADMIN_LIMITS.parkFee ? 'border-red-300' : ''}
             />
+            {Number(formData.parkFee) > ADMIN_LIMITS.parkFee && (
+              <p className="text-xs text-red-600">Exceeds limit of ₦{ADMIN_LIMITS.parkFee.toLocaleString()}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -409,7 +457,11 @@ const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
               onChange={(e) => setFormData(prev => ({ ...prev, transportToParkFee: e.target.value }))}
               placeholder="Enter transport fee"
               required
+              className={Number(formData.transportToParkFee) > ADMIN_LIMITS.transportToParkFee ? 'border-red-300' : ''}
             />
+            {Number(formData.transportToParkFee) > ADMIN_LIMITS.transportToParkFee && (
+              <p className="text-xs text-red-600">Exceeds limit of ₦{ADMIN_LIMITS.transportToParkFee.toLocaleString()}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -422,7 +474,11 @@ const BirdEyeForm = ({ onSubmit, onCancel }: BirdEyeFormProps) => {
               onChange={(e) => setFormData(prev => ({ ...prev, storekeeperLoadingFee: e.target.value }))}
               placeholder="Enter loading fee"
               required
+              className={Number(formData.storekeeperLoadingFee) > ADMIN_LIMITS.storekeeperLoadingFee ? 'border-red-300' : ''}
             />
+            {Number(formData.storekeeperLoadingFee) > ADMIN_LIMITS.storekeeperLoadingFee && (
+              <p className="text-xs text-red-600">Exceeds limit of ₦{ADMIN_LIMITS.storekeeperLoadingFee.toLocaleString()}</p>
+            )}
           </div>
 
           {/* Extra Charges */}

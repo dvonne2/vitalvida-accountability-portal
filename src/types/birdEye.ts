@@ -1,6 +1,7 @@
 
 export interface BirdEyeEntry {
   id: string;
+  consignmentNumber: string;
   movementDate: string;
   movementType: 'Warehouse to DA' | 'DA to DA' | 'DA to HQ';
   productName: string;
@@ -36,6 +37,7 @@ export interface BirdEyeEntry {
 export interface FilterOptions {
   movementType?: string;
   productName?: string;
+  consignmentNumber?: string;
   status?: string;
   flagType?: string;
   dateFrom?: string;

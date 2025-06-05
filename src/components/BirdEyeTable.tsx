@@ -67,6 +67,15 @@ const BirdEyeTable = ({ entries }: BirdEyeTableProps) => {
               </TableHeader>
               <TableBody>
                 <TableRow>
+                  <TableCell className="font-medium sticky left-0 bg-gray-50 border-r">Consignment Number</TableCell>
+                  {entries.map((entry) => (
+                    <TableCell key={entry.id} className="text-center border-r font-mono text-sm">
+                      {entry.consignmentNumber}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                <TableRow>
                   <TableCell className="font-medium sticky left-0 bg-gray-50 border-r">Movement Date</TableCell>
                   {entries.map((entry) => (
                     <TableCell key={entry.id} className="text-center border-r">

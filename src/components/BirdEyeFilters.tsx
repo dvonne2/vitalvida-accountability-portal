@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +40,27 @@ const BirdEyeFilters = ({ filters, onFiltersChange, totalEntries, filteredEntrie
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="consignmentNumber">Consignment Number</Label>
+            <Input
+              id="consignmentNumber"
+              value={filters.consignmentNumber || ''}
+              onChange={(e) => updateFilter('consignmentNumber', e.target.value)}
+              placeholder="Search consignment..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="productName">Product Name</Label>
+            <Input
+              id="productName"
+              value={filters.productName || ''}
+              onChange={(e) => updateFilter('productName', e.target.value)}
+              placeholder="Search product name..."
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="movementType">Movement Type</Label>
             <Select
@@ -92,16 +113,6 @@ const BirdEyeFilters = ({ filters, onFiltersChange, totalEntries, filteredEntrie
                 <SelectItem value="incomplete">⚠️ Incomplete</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="productName">Product Name</Label>
-            <Input
-              id="productName"
-              value={filters.productName || ''}
-              onChange={(e) => updateFilter('productName', e.target.value)}
-              placeholder="Search product name..."
-            />
           </div>
 
           <div className="space-y-2">
