@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,10 @@ import ConsignmentForm from './ConsignmentForm';
 import ActivityFeed from './ActivityFeed';
 import FraudAlerts from './FraudAlerts';
 import ReportsPanel from './ReportsPanel';
+import LiveOrderFeed from './LiveOrderFeed';
+import KPIScorecard from './KPIScorecard';
+import EnhancedMetrics from './EnhancedMetrics';
+import EnhancedActivityFeed from './EnhancedActivityFeed';
 
 interface ConsignmentDashboardProps {
   userRole: string;
@@ -64,55 +67,9 @@ const ConsignmentDashboard = ({ userRole, username }: ConsignmentDashboardProps)
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Package className="h-8 w-8 text-blue-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Active Consignments</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.activeConsignments}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Truck className="h-8 w-8 text-green-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">In Transit</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.inTransit}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Users className="h-8 w-8 text-purple-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Active DAs</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.daCount}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <AlertTriangle className="h-8 w-8 text-red-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Fraud Alerts</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.fraudAlerts}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Enhanced Metrics Section */}
+        <div className="mb-8">
+          <EnhancedMetrics />
         </div>
 
         {/* Main Content */}
@@ -126,6 +83,17 @@ const ConsignmentDashboard = ({ userRole, username }: ConsignmentDashboardProps)
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            {/* Live Order Feed */}
+            <LiveOrderFeed />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* KPI Scorecard */}
+              <KPIScorecard />
+
+              {/* Enhanced Activity Feed */}
+              <EnhancedActivityFeed />
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -184,20 +152,24 @@ const ConsignmentDashboard = ({ userRole, username }: ConsignmentDashboardProps)
           </TabsContent>
 
           <TabsContent value="activity">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Activity className="w-5 h-5 mr-2" />
-                  Real-Time DA Activity Feed
-                </CardTitle>
-                <CardDescription>
-                  Live tracking of all DA actions and system events
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ActivityFeed />
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Activity className="w-5 h-5 mr-2" />
+                    Real-Time DA Activity Feed
+                  </CardTitle>
+                  <CardDescription>
+                    Live tracking of all DA actions and system events
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ActivityFeed />
+                </CardContent>
+              </Card>
+
+              <EnhancedActivityFeed />
+            </div>
           </TabsContent>
 
           <TabsContent value="alerts">
