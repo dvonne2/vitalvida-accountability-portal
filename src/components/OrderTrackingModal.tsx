@@ -1,11 +1,14 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Phone, Truck, CreditCard, CheckCircle, AlertTriangle, Clock, User, FileText } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Upload, Phone, Truck, CreditCard, CheckCircle, AlertTriangle, Clock, User, FileText, DollarSign, Save } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 import ProofUploadModal from './ProofUploadModal';
 
 interface Order {
@@ -38,8 +41,23 @@ interface TimelineEvent {
   completed: boolean;
 }
 
+interface DeliveryCostData {
+  deliveryCost: string;
+  additionalCostAmount: string;
+  additionalCostDescription: string;
+  comments: string;
+}
+
 const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps) => {
   const [proofUploadType, setProofUploadType] = useState<string | null>(null);
+  const [deliveryCostData, setDeliveryCostData] = useState<DeliveryCostData>({
+    deliveryCost: '',
+    additionalCostAmount: '',
+    additionalCostDescription: '',
+    comments: ''
+  });
+  const [isSavingCosts, setIsSavingCosts] = useState(false);
+  const { toast } = useToast();
 
   const timelineEvents: TimelineEvent[] = [
     {
@@ -91,11 +109,116 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
     }
     
     if (order.outForDelivery && !order.delivered) {
-      // Mock 6+ hour check - in real app would compare timestamps
       flags.push({ text: 'Out > 6hrs Without Delivery', color: 'destructive' as const });
     }
     
     return flags;
+  };
+
+  const validateCostData = () => {
+    // Delivery cost is required
+    if (!deliveryCostData.deliveryCost || parseFloat(deliveryCostData.deliveryCost) <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Delivery cost is required and must be greater than 0.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // If additional cost amount is provided, description must be provided and vice versa
+    const hasAmount = deliveryCostData.additionalCostAmount && parseFloat(deliveryCostData.additionalCostAmount) > 0;
+    const hasDescription = deliveryCostData.additionalCostDescription.trim() !== '';
+
+    if (hasAmount && !hasDescription) {
+      toast({
+        title: "Validation Error",
+        description: "Additional cost description is required when amount is entered.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (hasDescription && !hasAmount) {
+      toast({
+        title: "Validation Error",
+        description: "Additional cost amount is required when description is provided.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Check if description is too vague
+    if (hasDescription) {
+      const vague = ['misc', 'others', 'other', 'miscellaneous', 'extra'];
+      const isVague = vague.some(word => 
+        deliveryCostData.additionalCostDescription.toLowerCase().includes(word) && 
+        deliveryCostData.additionalCostDescription.trim().length < 10
+      );
+      
+      if (isVague) {
+        toast({
+          title: "Validation Error",
+          description: "Please provide a clear and specific description for additional costs.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleSaveCosts = async () => {
+    if (!validateCostData()) return;
+
+    setIsSavingCosts(true);
+
+    try {
+      // Mock save - in real app this would hit your API
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const costData = {
+        orderId: order.id,
+        deliveryCost: parseFloat(deliveryCostData.deliveryCost),
+        additionalCost: deliveryCostData.additionalCostAmount ? parseFloat(deliveryCostData.additionalCostAmount) : 0,
+        additionalCostDescription: deliveryCostData.additionalCostDescription || null,
+        comments: deliveryCostData.comments || null,
+        enteredBy: 'logistics_manager',
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('Saving delivery cost data:', costData);
+
+      // Check if delivery cost exceeds threshold (₦2,500)
+      const deliveryCostThreshold = 2500;
+      const exceedsThreshold = costData.deliveryCost > deliveryCostThreshold;
+
+      toast({
+        title: exceedsThreshold ? "Cost Saved - Flagged for Review" : "Delivery Costs Saved",
+        description: exceedsThreshold 
+          ? `Delivery cost of ₦${costData.deliveryCost} exceeds threshold and has been flagged.`
+          : `Delivery costs for order ${order.id} have been recorded.`,
+        variant: exceedsThreshold ? "destructive" : "default",
+      });
+
+      // Reset form
+      setDeliveryCostData({
+        deliveryCost: '',
+        additionalCostAmount: '',
+        additionalCostDescription: '',
+        comments: ''
+      });
+
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "There was an error saving the delivery costs. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingCosts(false);
+    }
   };
 
   return (
@@ -190,7 +313,104 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
               </CardContent>
             </Card>
 
-            {/* 3. WARNING FLAGS */}
+            {/* 3. DELIVERY COST TRACKING - NEW SECTION */}
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="flex items-center text-blue-700">
+                  <DollarSign className="w-5 h-5 mr-2" />
+                  Delivery Cost Tracking
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="delivery-cost" className="text-sm font-medium">
+                      Delivery Cost (₦) *
+                    </Label>
+                    <Input
+                      id="delivery-cost"
+                      type="number"
+                      value={deliveryCostData.deliveryCost}
+                      onChange={(e) => setDeliveryCostData(prev => ({ ...prev, deliveryCost: e.target.value }))}
+                      placeholder="2500"
+                      className="mt-1"
+                      min="0"
+                      step="0.01"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Expected: ₦2,500. Amounts above will be flagged.
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="additional-amount" className="text-sm font-medium">
+                      Additional Cost Amount (₦)
+                    </Label>
+                    <Input
+                      id="additional-amount"
+                      type="number"
+                      value={deliveryCostData.additionalCostAmount}
+                      onChange={(e) => setDeliveryCostData(prev => ({ ...prev, additionalCostAmount: e.target.value }))}
+                      placeholder="200"
+                      className="mt-1"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="additional-description" className="text-sm font-medium">
+                    Additional Cost Description
+                  </Label>
+                  <Input
+                    id="additional-description"
+                    type="text"
+                    value={deliveryCostData.additionalCostDescription}
+                    onChange={(e) => setDeliveryCostData(prev => ({ ...prev, additionalCostDescription: e.target.value }))}
+                    placeholder="e.g., Security gate fee, Toll charge, Fuel top-up"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Required if additional amount is entered. Be specific - avoid vague terms.
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="comments" className="text-sm font-medium">
+                    Comments / Remarks (Optional)
+                  </Label>
+                  <Textarea
+                    id="comments"
+                    value={deliveryCostData.comments}
+                    onChange={(e) => setDeliveryCostData(prev => ({ ...prev, comments: e.target.value }))}
+                    placeholder="e.g., Customer rescheduled, DA went twice, unusual circumstances..."
+                    className="mt-1"
+                    rows={3}
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleSaveCosts}
+                  disabled={isSavingCosts}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSavingCosts ? (
+                    <>
+                      <Save className="w-4 h-4 mr-2 animate-spin" />
+                      Saving Costs...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Delivery Costs
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* 4. WARNING FLAGS */}
             {getWarningFlags().length > 0 && (
               <Card className="border-red-200 bg-red-50">
                 <CardHeader>
@@ -211,7 +431,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
               </Card>
             )}
 
-            {/* 4. UPLOAD PROOF SECTION */}
+            {/* 5. UPLOAD PROOF SECTION */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -241,7 +461,7 @@ const OrderTrackingModal = ({ order, isOpen, onClose }: OrderTrackingModalProps)
               </CardContent>
             </Card>
 
-            {/* 5. ASSIGNED DA INFO */}
+            {/* 6. ASSIGNED DA INFO */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
