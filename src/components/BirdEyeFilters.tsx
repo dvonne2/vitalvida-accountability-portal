@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,7 +50,6 @@ const BirdEyeFilters = ({ filters, onFiltersChange, totalEntries, filteredEntrie
                 <SelectValue placeholder="All movement types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All movement types</SelectItem>
                 <SelectItem value="Warehouse to DA">Warehouse to DA</SelectItem>
                 <SelectItem value="DA to DA">DA to DA</SelectItem>
                 <SelectItem value="DA to HQ">DA to HQ</SelectItem>
@@ -69,7 +67,6 @@ const BirdEyeFilters = ({ filters, onFiltersChange, totalEntries, filteredEntrie
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
                 <SelectItem value="In Transit">In Transit</SelectItem>
                 <SelectItem value="Delivered">Delivered</SelectItem>
                 <SelectItem value="Delayed">Delayed</SelectItem>
@@ -89,7 +86,6 @@ const BirdEyeFilters = ({ filters, onFiltersChange, totalEntries, filteredEntrie
                 <SelectValue placeholder="All flag types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All flag types</SelectItem>
                 <SelectItem value="normal">✅ Normal</SelectItem>
                 <SelectItem value="exceeds_limit">🚨 Exceeds Limit</SelectItem>
                 <SelectItem value="overridden">🟠 Overridden</SelectItem>
