@@ -6,26 +6,7 @@ import OrderTrackingModal from './OrderTrackingModal';
 import OrderMetrics from './OrderMetrics';
 import OrdersTable from './OrdersTable';
 import { useOrderData } from '@/hooks/useOrderData';
-
-interface Order {
-  id: string;
-  customer: string;
-  product: string;
-  daCalled: string;
-  outForDelivery: string;
-  paymentReceived: string;
-  delivered: string;
-  status: 'delivered' | 'in_progress' | 'pending' | 'breach';
-  address: string;
-  state: string;
-  assignedDA: string;
-  daName?: string;
-  daPhone?: string;
-  warnings: string[];
-  deliveryCost?: number;
-  additionalCost?: number;
-  additionalCostDescription?: string;
-}
+import { Order } from '@/types/order';
 
 const LiveOrderFeed = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);

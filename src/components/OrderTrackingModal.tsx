@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -11,26 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, Phone, Truck, CreditCard, CheckCircle, AlertTriangle, Clock, User, FileText, DollarSign, Save, MessageCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import ProofUploadModal from './ProofUploadModal';
-
-interface Order {
-  id: string;
-  customer: string;
-  product: string;
-  daCalled: string;
-  outForDelivery: string;
-  paymentReceived: string;
-  delivered: string;
-  status: 'delivered' | 'in_progress' | 'pending' | 'breach';
-  address: string;
-  state: string;
-  assignedDA: string;
-  daName?: string;
-  daPhone?: string;
-  warnings: string[];
-  deliveryCost?: number;
-  additionalCost?: number;
-  additionalCostDescription?: string;
-}
+import { Order } from '@/types/order';
 
 interface OrderTrackingModalProps {
   order: Order;
