@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import ConsignmentDashboard from '@/components/ConsignmentDashboard';
 
@@ -8,6 +9,7 @@ const Index = () => {
   const [userRole, setUserRole] = useState('');
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,13 +29,12 @@ const Index = () => {
         setIsLoading(false);
       } else {
         // User is not authenticated, redirect to Superadmin login
-        // Replace with actual Superadmin portal URL
-        window.location.href = '/superadmin/login';
+        navigate('/superadmin/login');
       }
     };
 
     checkAuthentication();
-  }, []);
+  }, [navigate]);
 
   // Show loading while checking authentication
   if (isLoading) {
